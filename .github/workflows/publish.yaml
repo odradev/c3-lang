@@ -1,0 +1,30 @@
+name: publish
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+          profile: minimal
+          components: rustfmt, clippy
+      - run: make test
+
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} -p c3-lang-linearization && sleep 5
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} -p c3-lang-parser && sleep 5
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - run: cargo publish --token ${CARGO_REGISTRY_TOKEN} -p c3-lang-macro
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
