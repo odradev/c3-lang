@@ -1,7 +1,11 @@
 [package]
 name = "c3-lang-linearization"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2018"
+authors = ["Maciej Zieliński <maciej@odra.dev>"]
+description = "Implementation of C3 linearization."
+homepage = "https://odra.dev"
+license = "MIT"
 
 [dependencies]
 quote = "1"

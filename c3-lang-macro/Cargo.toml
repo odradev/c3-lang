@@ -2,6 +2,10 @@
 name = "c3-lang-macro"
 version = "0.1.0"
 edition = "2018"
+authors = ["Maciej Zieliński <maciej@odra.dev>"]
+description = "C3 Lang macro."
+homepage = "https://odra.dev"
+license = "MIT"
 
 [lib]
 proc-macro = true
