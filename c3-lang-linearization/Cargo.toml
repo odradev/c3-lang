@@ -1,6 +1,6 @@
 [package]
 name = "c3-lang-linearization"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2018"
 authors = ["Maciej Zieliński <maciej@odra.dev>"]
 description = "Implementation of C3 linearization."
