@@ -1,6 +1,6 @@
 test:
-	cargo test -p c3-lang-linearization --lib
-	cargo test -p c3-lang-parser --lib
+	cargo test --lib -p c3-lang-linearization
+	cargo test --lib -p c3-lang-parser
 
 lint:
 	cargo fmt
