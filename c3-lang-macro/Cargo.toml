@@ -1,6 +1,6 @@
 [package]
 name = "c3-lang-macro"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2018"
 authors = ["Maciej Zieliński <maciej@odra.dev>"]
 description = "C3 Lang macro."
@@ -11,7 +11,7 @@ license = "MIT"
 proc-macro = true
 
 [dependencies]
-c3-lang-parser = { version = "0.0.2", path = "./../c3-lang-parser" }
+c3-lang-parser = { version = "0.0.3", path = "./../c3-lang-parser" }
 quote = "1"
 proc-macro2 = "1"
 syn = { version = "1", features = ["full"] }
