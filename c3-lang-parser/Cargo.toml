@@ -1,13 +1,17 @@
 [package]
 name = "c3-lang-parser"
-version = "0.1.0"
+version = "0.0.2"
 edition = "2018"
+authors = ["Maciej Zieliński <maciej@odra.dev>"]
+description = "Implementation of C3 Lang."
+homepage = "https://odra.dev"
+license = "MIT"
 
 [dependencies]
 quote = "1"
 syn = { version = "1", features = ["full", "extra-traits"] }
 proc-macro2 = "1"
-c3-lang-linearization = { path = "./../c3-lang-linearization" }
+c3-lang-linearization = { version = "0.0.2", path = "./../c3-lang-linearization" }
 
 [dev-dependencies]
 pretty_assertions = "1.2"
