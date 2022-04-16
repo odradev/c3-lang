@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "c3-lang-linearization",
+    "c3-lang-macro",
+    "c3-lang-parser"
+]
+
+[profile.release]
+codegen-units = 1
+lto = true
