@@ -7,7 +7,7 @@ edition = "2018"
 quote = "1"
 syn = { version = "1", features = ["full", "extra-traits"] }
 proc-macro2 = "1"
-c3-lang-linearization = { path = "./../c3-lang-linearization" }
+c3-lang-linearization = { version = "0.1.0", path = "./../c3-lang-linearization" }
 
 [dev-dependencies]
 pretty_assertions = "1.2"
