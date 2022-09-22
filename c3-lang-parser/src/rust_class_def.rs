@@ -15,12 +15,13 @@ impl Parse for RustClassDef {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let item_struct: ItemStruct = input.parse()?;
         let lookahead = input.lookahead1();
-        let item_impl = if lookahead.peek(Token![impl]) {
+        let item_impl = if lookahead.peek(Token![impl]) || input.peek(Token![#]) {
             let item_impl: ItemImpl = input.parse()?;
             Some(item_impl)
         } else {
             None
         };
+        // println!("asd");
         Ok(RustClassDef {
             item_struct,
             item_impl,
@@ -41,8 +42,17 @@ impl RustClassDef {
         }
     }
 
-    pub fn attrs(&self) -> Vec<Attribute> {
+    pub fn struct_attrs(&self) -> Vec<Attribute> {
         self.item_struct.attrs.clone()
+    }
+
+    pub fn impl_attrs(&self) -> Vec<Attribute> {
+        match &self.item_impl {
+            None => Vec::new(),
+            Some(item_impl) => {
+                item_impl.attrs.clone()
+            }
+        }
     }
 
     pub fn parents(&self) -> Vec<Class> {
@@ -159,6 +169,7 @@ mod tests {
                 x: u32
             }
 
+            #[custom_macro]
             impl A {
                 const PARENTS: &'static [ClassName; 2usize] = &[
                     ClassName::X,
@@ -172,6 +183,7 @@ mod tests {
         assert!(result.is_public());
         assert_eq!(result.class(), Class::from("A"));
         assert_eq!(result.parents(), vec![Class::from("X"), Class::from("Y")]);
-        assert_eq!(result.attrs(), vec![parse_quote! { #[derive(Default)] }]);
+        assert_eq!(result.struct_attrs(), vec![parse_quote! { #[derive(Default)] }]);
+        assert_eq!(result.impl_attrs(), vec![parse_quote! { #[custom_macro] }]);
     }
 }

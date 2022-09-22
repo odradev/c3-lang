@@ -18,7 +18,8 @@ pub struct ClassNameDef {
 
 #[derive(Debug, PartialEq)]
 pub struct ClassDef {
-    pub attrs: Vec<Attribute>,
+    pub struct_attrs: Vec<Attribute>,
+    pub impl_attrs: Vec<Attribute>,
     pub class: Class,
     pub path: Vec<Class>,
     pub variables: Vec<VarDef>,
@@ -33,6 +34,7 @@ pub struct VarDef {
 
 #[derive(Debug, PartialEq)]
 pub struct FnDef {
+    pub attrs: Vec<Attribute>,
     pub name: Fn,
     pub args: Vec<FnArg>,
     pub ret: ReturnType,

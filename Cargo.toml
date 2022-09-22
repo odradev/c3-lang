@@ -2,7 +2,8 @@
 members = [
     "c3-lang-linearization",
     "c3-lang-macro",
-    "c3-lang-parser"
+    "c3-lang-parser",
+    "tests"
 ]
 
 [profile.release]
