@@ -1,6 +1,7 @@
+use c3_lang_linearization::Class;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
-use syn::FnArg;
+use syn::{Attribute, FnArg};
 
 use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarDef};
 
@@ -28,16 +29,20 @@ impl ToTokens for ClassNameDef {
 impl ToTokens for ClassDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let class_ident = &self.class;
-        let path = &self.path;
+        let path: Vec<Class> = self.path.clone().into_iter().rev().collect();
         let path_len = path.len();
         let variables = &self.variables;
         let functions = &self.functions;
+        let struct_attrs = attributes_to_token_stream(&self.struct_attrs);
+        let impl_attrs = attributes_to_token_stream(&self.impl_attrs);
         tokens.extend(quote! {
+            #struct_attrs
             pub struct #class_ident {
                 __stack: PathStack,
                 #(#variables),*
             }
 
+            #impl_attrs
             impl #class_ident {
                 const PATH: &'static [ClassName; #path_len] = &[
                     #(ClassName::#path),*
@@ -66,8 +71,10 @@ impl ToTokens for FnDef {
         let args = &self.args;
         let ret = &self.ret;
         let implementations = &self.implementations;
-        let args_as_params = args_to_params(&args);
+        let args_as_params = args_to_params(args);
+        let attrs = attributes_to_token_stream(&self.attrs);
         tokens.extend(quote! {
+            #attrs
             pub fn #fn_ident(#(#args),*) #ret {
                 self.__stack.push_path_on_stack(Self::PATH);
                 let result = self.#fn_super_ident(#(#args_as_params),*);
@@ -97,9 +104,8 @@ impl ToTokens for ClassFnImpl {
     }
 }
 
-fn args_to_params(args: &Vec<FnArg>) -> Vec<Ident> {
-    args.clone()
-        .into_iter()
+fn args_to_params(args: &[FnArg]) -> Vec<Ident> {
+    args.iter()
         .skip(1)
         .map(|arg| {
             if let FnArg::Typed(arg) = arg {
@@ -109,6 +115,16 @@ fn args_to_params(args: &Vec<FnArg>) -> Vec<Ident> {
             }
         })
         .collect()
+}
+
+fn attributes_to_token_stream(attrs: &[Attribute]) -> proc_macro2::TokenStream {
+    let mut result = proc_macro2::TokenStream::new();
+    for attr in attrs {
+        result.extend(quote! {
+            #attr
+        });
+    }
+    result
 }
 
 fn stack_definition() -> TokenStream {
@@ -142,6 +158,12 @@ fn stack_definition() -> TokenStream {
                 class
             }
         }
+
+        impl Default for PathStack {
+            fn default() -> PathStack {
+                PathStack::new()
+            }
+        }
     }
 }
 
@@ -167,12 +189,17 @@ mod tests {
                 A,
                 B,
             }
+
+            #[derive(Debug)]
             pub struct B {
                 __stack: PathStack,
                 x: u32,
             }
+
+            #[cfg(target_os = "linux")]
             impl B {
-                const PATH: &'static [ClassName; 2usize] = &[ClassName::B, ClassName::A];
+                const PATH: &'static [ClassName; 2usize] = &[ClassName::A, ClassName::B];
+
                 pub fn bar(&self, counter: Num) -> String {
                     self.__stack.push_path_on_stack(Self::PATH);
                     let result = self.super_bar(counter);
@@ -202,6 +229,8 @@ mod tests {
                         _ => self.super_bar(counter),
                     }
                 }
+
+                #[test]
                 pub fn foo(&self, counter: Num) -> String {
                     self.__stack.push_path_on_stack(Self::PATH);
                     let result = self.super_foo(counter);

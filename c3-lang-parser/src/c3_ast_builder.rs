@@ -47,7 +47,8 @@ fn build_class(rust_class: &RustClassDef, c3: &C3, register: &Register) -> Class
     let variables = build_variables(&class, c3, register);
     let functions = build_functions(&class, c3, register);
     ClassDef {
-        attrs: rust_class.attrs(),
+        struct_attrs: rust_class.struct_attrs(),
+        impl_attrs: rust_class.impl_attrs(),
         class: class.clone(),
         path: c3.path(&class).unwrap(),
         variables,
@@ -81,6 +82,7 @@ fn build_function(fun: &Fn, register: &Register) -> FnDef {
     let ret = get_ret_from_method(first_impl);
     let implementations = get_class_function_impls(fun, register);
     FnDef {
+        attrs: first_impl.attrs.clone(),
         name: fun.clone(),
         args,
         ret,
@@ -165,6 +167,7 @@ pub mod tests {
                     }
                 }
 
+                #[test]
                 pub fn foo(&self, counter: Num) -> String {
                     let label = format!("A::foo({})", counter);
                     if counter == 0 {
@@ -179,6 +182,7 @@ pub mod tests {
             pub struct B {
             }
 
+            #[cfg(target_os = "linux")]
             impl B {
                 pub const PARENTS: &'static [ClassName; 1] = &[ClassName::A];
 
@@ -201,7 +205,8 @@ pub mod tests {
                 classes: vec![Class::from("A"), Class::from("B")],
             },
             classes: vec![ClassDef {
-                attrs: vec![parse_quote! { #[derive(Debug)] }],
+                struct_attrs: vec![parse_quote! { #[derive(Debug)] }],
+                impl_attrs: vec![parse_quote! { #[cfg(target_os = "linux")] }],
                 class: Class::from("B"),
                 path: vec![Class::from("B"), Class::from("A")],
                 variables: vec![VarDef {
@@ -210,6 +215,7 @@ pub mod tests {
                 }],
                 functions: vec![
                     FnDef {
+                        attrs: Vec::new(),
                         name: Fn::from("bar"),
                         args: vec![parse_quote! { &self }, parse_quote! { counter: Num }],
                         ret: parse_quote! { -> String },
@@ -241,6 +247,7 @@ pub mod tests {
                         ],
                     },
                     FnDef {
+                        attrs: vec![parse_quote! { #[test] }],
                         name: Fn::from("foo"),
                         args: vec![parse_quote! { &self }, parse_quote! { counter: Num }],
                         ret: parse_quote! { -> String },

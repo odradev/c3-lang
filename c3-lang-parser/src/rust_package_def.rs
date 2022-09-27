@@ -34,7 +34,7 @@ impl Parse for RustPackageDef {
             if input.is_empty() {
                 break;
             } else {
-                return Err(input.error(format!("Unknown keyword. {}", input.to_string())));
+                return Err(input.error(format!("Unknown keyword. {}", input)));
             }
         }
         Ok(RustPackageDef {
