@@ -1,6 +1,6 @@
 use c3_lang_macro::c3_lang;
 
-c3_lang!{
+c3_lang! {
     #[derive(Default)]
     pub struct A {}
 
@@ -41,12 +41,11 @@ mod tests {
     fn test_inheritance() {
         let a = A::default();
         assert_eq!(a.get(), 10);
-        
+
         let b = B::default();
         assert_eq!(b.get(), 11);
 
         let c = C::default();
         assert_eq!(c.get(), 12);
-
     }
 }

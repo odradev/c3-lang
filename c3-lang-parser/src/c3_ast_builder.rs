@@ -182,7 +182,7 @@ pub mod tests {
             pub struct B {
             }
 
-            #[cfg(target_os = "linux")] 
+            #[cfg(target_os = "linux")]
             impl B {
                 pub const PARENTS: &'static [ClassName; 1] = &[ClassName::A];
 

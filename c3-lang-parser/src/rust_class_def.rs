@@ -35,11 +35,7 @@ impl RustClassDef {
     }
 
     pub fn is_public(&self) -> bool {
-        if let Visibility::Public(_) = self.item_struct.vis {
-            true
-        } else {
-            false
-        }
+        matches!(self.item_struct.vis, Visibility::Public(_))
     }
 
     pub fn struct_attrs(&self) -> Vec<Attribute> {
@@ -49,9 +45,7 @@ impl RustClassDef {
     pub fn impl_attrs(&self) -> Vec<Attribute> {
         match &self.item_impl {
             None => Vec::new(),
-            Some(item_impl) => {
-                item_impl.attrs.clone()
-            }
+            Some(item_impl) => item_impl.attrs.clone(),
         }
     }
 
@@ -183,7 +177,10 @@ mod tests {
         assert!(result.is_public());
         assert_eq!(result.class(), Class::from("A"));
         assert_eq!(result.parents(), vec![Class::from("X"), Class::from("Y")]);
-        assert_eq!(result.struct_attrs(), vec![parse_quote! { #[derive(Default)] }]);
+        assert_eq!(
+            result.struct_attrs(),
+            vec![parse_quote! { #[derive(Default)] }]
+        );
         assert_eq!(result.impl_attrs(), vec![parse_quote! { #[custom_macro] }]);
     }
 }

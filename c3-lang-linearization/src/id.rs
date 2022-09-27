@@ -19,9 +19,9 @@ impl From<String> for Id {
     }
 }
 
-impl Into<String> for Id {
-    fn into(self) -> String {
-        self.name
+impl From<Id> for String {
+    fn from(id: Id) -> Self {
+        id.name
     }
 }
 
