@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use c3_lang_linearization::{Class, Fn};
 use proc_macro2::Ident;
-use syn::{Attribute, Block, FnArg, Item, ReturnType, Type};
+use syn::{Attribute, Block, FnArg, Item, ReturnType, Type, Visibility};
 
 #[derive(Debug, PartialEq)]
 pub struct PackageDef {
@@ -43,6 +43,7 @@ pub struct FnDef {
 
 #[derive(Debug, PartialEq)]
 pub struct ClassFnImpl {
+    pub visibility: Visibility,
     pub class: Class,
     pub fun: Fn,
     pub implementation: Block,

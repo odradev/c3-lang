@@ -104,6 +104,7 @@ fn get_class_function_impls(fun: &Fn, register: &Register) -> Vec<ClassFnImpl> {
     let mut result = vec![];
     for (class, impl_method) in register.get(fun) {
         result.push(ClassFnImpl {
+            visibility: impl_method.vis,
             class,
             fun: fun.clone(),
             implementation: impl_method.block,
@@ -221,6 +222,7 @@ pub mod tests {
                         ret: parse_quote! { -> String },
                         implementations: vec![
                             ClassFnImpl {
+                                visibility: parse_quote!(pub),
                                 class: Class::from("A"),
                                 fun: Fn::from("bar"),
                                 implementation: parse_quote! {{
@@ -233,6 +235,7 @@ pub mod tests {
                                 }},
                             },
                             ClassFnImpl {
+                                visibility: parse_quote!(pub),
                                 class: Class::from("B"),
                                 fun: Fn::from("bar"),
                                 implementation: parse_quote! {{
@@ -252,6 +255,7 @@ pub mod tests {
                         args: vec![parse_quote! { &self }, parse_quote! { counter: Num }],
                         ret: parse_quote! { -> String },
                         implementations: vec![ClassFnImpl {
+                            visibility: parse_quote!(pub),
                             class: Class::from("A"),
                             fun: Fn::from("foo"),
                             implementation: parse_quote! {{
