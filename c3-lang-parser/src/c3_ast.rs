@@ -33,7 +33,22 @@ pub struct VarDef {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FnDef {
+pub enum FnDef {
+    Plain(PlainFnDef),
+    Complex(ComplexFnDef),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PlainFnDef {
+    pub attrs: Vec<Attribute>,
+    pub name: Fn,
+    pub args: Vec<FnArg>,
+    pub ret: ReturnType,
+    pub implementation: ClassFnImpl,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ComplexFnDef {
     pub attrs: Vec<Attribute>,
     pub name: Fn,
     pub args: Vec<FnArg>,
@@ -44,7 +59,7 @@ pub struct FnDef {
 #[derive(Debug, PartialEq)]
 pub struct ClassFnImpl {
     pub visibility: Visibility,
-    pub class: Class,
+    pub class: Option<Class>,
     pub fun: Fn,
     pub implementation: Block,
 }

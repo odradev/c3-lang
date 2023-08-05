@@ -35,18 +35,21 @@ impl ToTokens for ClassDef {
         let functions = &self.functions;
         let struct_attrs = attributes_to_token_stream(&self.struct_attrs);
         let impl_attrs = attributes_to_token_stream(&self.impl_attrs);
+
+        let stack_arg = (path_len != 0).then(|| quote!(__stack: PathStack,));
+        let path_def = (path_len != 0).then(
+            || quote!(const PATH: &'static [ClassName; #path_len] = &[#(ClassName::#path),*];),
+        );
         tokens.extend(quote! {
             #struct_attrs
             pub struct #class_ident {
-                __stack: PathStack,
+                #stack_arg
                 #(#variables),*
             }
 
             #impl_attrs
             impl #class_ident {
-                const PATH: &'static [ClassName; #path_len] = &[
-                    #(ClassName::#path),*
-                ];
+                #path_def
 
                 #(#functions)*
             }
@@ -66,40 +69,62 @@ impl ToTokens for VarDef {
 
 impl ToTokens for FnDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let fn_ident = &self.name;
-        let fn_super_ident = format_ident!("super_{}", fn_ident.to_string());
-        let args = &self.args;
-        let ret = &self.ret;
-        let implementations = &self.implementations;
-        let args_as_params = args_to_params(args);
-        let attrs = attributes_to_token_stream(&self.attrs);
-        tokens.extend(quote! {
-            #attrs
-            pub fn #fn_ident(#(#args),*) #ret {
-                self.__stack.push_path_on_stack(Self::PATH);
-                let result = self.#fn_super_ident(#(#args_as_params),*);
-                self.__stack.drop_one_from_stack();
-                result
-            }
+        match self {
+            FnDef::Plain(def) => {
+                let fn_ident = &def.name;
+                let args = &def.args;
+                let ret = &def.ret;
+                let implementation = &def.implementation;
+                let attrs = attributes_to_token_stream(&def.attrs);
 
-            pub fn #fn_super_ident(#(#args),*) #ret {
-                let __class = self.__stack.pop_from_top_path();
-                match __class {
-                    #(#implementations),*
-                    #[allow(unreachable_patterns)]
-                    _ => self.#fn_super_ident(#(#args_as_params),*),
-                }
+                tokens.extend(quote! {
+                    #attrs
+                    pub fn #fn_ident(#(#args),*) #ret {
+                        #implementation
+                    }
+                });
             }
-        });
+            FnDef::Complex(def) => {
+                let fn_ident = &def.name;
+                let fn_super_ident = format_ident!("super_{}", fn_ident.to_string());
+                let args = &def.args;
+                let ret = &def.ret;
+                let implementations = &def.implementations;
+                let args_as_params = args_to_params(args);
+                let attrs = attributes_to_token_stream(&def.attrs);
+
+                tokens.extend(quote! {
+                    #attrs
+                    pub fn #fn_ident(#(#args),*) #ret {
+                        self.__stack.push_path_on_stack(Self::PATH);
+                        let result = self.#fn_super_ident(#(#args_as_params),*);
+                        self.__stack.drop_one_from_stack();
+                        result
+                    }
+
+                    fn #fn_super_ident(#(#args),*) #ret {
+                        let __class = self.__stack.pop_from_top_path();
+                        match __class {
+                            #(#implementations),*
+                            #[allow(unreachable_patterns)]
+                            _ => self.#fn_super_ident(#(#args_as_params),*),
+                        }
+                    }
+                });
+            }
+        };
     }
 }
 
 impl ToTokens for ClassFnImpl {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let class = &self.class;
+        let class = self
+            .class
+            .as_ref()
+            .map(|class| quote!(ClassName::#class => ));
         let implementation = &self.implementation;
         tokens.extend(quote! {
-            ClassName::#class => #implementation
+            #class #implementation
         });
     }
 }
@@ -129,6 +154,7 @@ fn attributes_to_token_stream(attrs: &[Attribute]) -> proc_macro2::TokenStream {
 
 fn stack_definition() -> TokenStream {
     quote! {
+        #[derive(Clone)]
         struct PathStack {
             stack: std::sync::Arc<std::sync::Mutex<Vec<Vec<ClassName>>>>
         }

@@ -13,6 +13,14 @@ impl From<&str> for Id {
     }
 }
 
+impl From<&&str> for Id {
+    fn from(name: &&str) -> Self {
+        Id {
+            name: String::from(*name),
+        }
+    }
+}
+
 impl From<String> for Id {
     fn from(name: String) -> Self {
         Id { name }
