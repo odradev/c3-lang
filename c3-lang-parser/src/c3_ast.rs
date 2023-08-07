@@ -6,6 +6,7 @@ use syn::{Attribute, Block, FnArg, Item, ReturnType, Type, Visibility};
 
 #[derive(Debug, PartialEq)]
 pub struct PackageDef {
+    pub attrs: Vec<Attribute>,
     pub other_code: Vec<Item>,
     pub class_name: ClassNameDef,
     pub classes: Vec<ClassDef>,

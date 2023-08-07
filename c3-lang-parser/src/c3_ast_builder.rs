@@ -7,11 +7,13 @@ use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarD
 // --- Package Builder ---
 
 pub fn build_package_def(rust_package: &RustPackageDef) -> PackageDef {
+    let attrs = rust_package.attrs.clone();
     let other_code = rust_package.other_code.clone();
     let class_name = build_class_name_def(rust_package);
     let classes = build_classes(rust_package);
 
     PackageDef {
+        attrs,
         other_code,
         class_name,
         classes,
@@ -201,6 +203,7 @@ pub mod tests {
 
     pub fn test_c3_ast() -> PackageDef {
         PackageDef {
+            attrs: vec![],
             other_code: vec![parse_quote! { pub type Num = u32; }],
             class_name: ClassNameDef {
                 classes: vec![Class::from("A"), Class::from("B")],

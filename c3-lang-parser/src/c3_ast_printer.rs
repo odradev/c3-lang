@@ -7,6 +7,7 @@ use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarD
 
 impl ToTokens for PackageDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append_all(&self.attrs);
         tokens.append_all(&self.other_code);
         tokens.extend(stack_definition());
         tokens.extend(self.class_name.to_token_stream());
@@ -232,7 +233,7 @@ mod tests {
                     self.__stack.drop_one_from_stack();
                     result
                 }
-                pub fn super_bar(&self, counter: Num) -> String {
+                fn super_bar(&self, counter: Num) -> String {
                     let __class = self.__stack.pop_from_top_path();
                     match __class {
                         ClassName::A => {
@@ -263,7 +264,7 @@ mod tests {
                     self.__stack.drop_one_from_stack();
                     result
                 }
-                pub fn super_foo(&self, counter: Num) -> String {
+                fn super_foo(&self, counter: Num) -> String {
                     let __class = self.__stack.pop_from_top_path();
                     match __class {
                         ClassName::A => {
