@@ -1,7 +1,7 @@
 use c3_lang_linearization::Class;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
-use syn::{Attribute, FnArg};
+use syn::{Attribute, FnArg, parse_quote};
 
 use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarDef};
 
@@ -77,10 +77,11 @@ impl ToTokens for FnDef {
                 let ret = &def.ret;
                 let implementation = &def.implementation;
                 let attrs = attributes_to_token_stream(&def.attrs);
+                let vis = &implementation.visibility;
 
                 tokens.extend(quote! {
                     #attrs
-                    pub fn #fn_ident(#(#args),*) #ret {
+                    #vis fn #fn_ident(#(#args),*) #ret {
                         #implementation
                     }
                 });
@@ -93,10 +94,11 @@ impl ToTokens for FnDef {
                 let implementations = &def.implementations;
                 let args_as_params = args_to_params(args);
                 let attrs = attributes_to_token_stream(&def.attrs);
+                let vis = implementations.first().map(|f| f.visibility.clone()).unwrap_or(parse_quote!(pub));
 
                 tokens.extend(quote! {
                     #attrs
-                    pub fn #fn_ident(#(#args),*) #ret {
+                    #vis fn #fn_ident(#(#args),*) #ret {
                         self.__stack.push_path_on_stack(Self::PATH);
                         let result = self.#fn_super_ident(#(#args_as_params),*);
                         self.__stack.drop_one_from_stack();
