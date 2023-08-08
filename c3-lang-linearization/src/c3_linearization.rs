@@ -58,6 +58,42 @@ mod tests {
     }
 
     #[test]
+    fn test_c3_second_example() {
+        let mut input = C3::new();
+        input.add_class_str("Context", "");
+        input.add_class_str("IERC20", "");
+        input.add_class_str("IERC20Metadata", "IERC20");
+        input.add_class_str("IERC20Errors", "");
+        input.add_class_str("ERC20", "Context, IERC20Metadata, IERC20, IERC20Errors");
+        input.add_class_str("ERC20Burnable", "ERC20, Context");
+        input.add_class_str("ERC20Capped", "ERC20");
+        input.add_class_str("Ownable", "Context");
+        input.add_class_str("Plascoin", "ERC20Capped, ERC20Burnable, Ownable");
+
+        let mut target = C3::new();
+        target.add_class_str("Context", "Context");
+        target.add_class_str("IERC20", "IERC20");
+        target.add_class_str("IERC20Metadata", "IERC20Metadata, IERC20");
+        target.add_class_str("IERC20Errors", "IERC20Errors");
+        target.add_class_str(
+            "ERC20",
+            "ERC20, Context, IERC20Metadata, IERC20, IERC20Errors",
+        );
+        target.add_class_str(
+            "ERC20Burnable",
+            "ERC20Burnable, ERC20, Context, IERC20Metadata, IERC20, IERC20Errors",
+        );
+        target.add_class_str(
+            "ERC20Capped",
+            "ERC20Capped, ERC20, Context, IERC20Metadata, IERC20, IERC20Errors",
+        );
+        target.add_class_str("Ownable", "Ownable, Context");
+        target.add_class_str("Plascoin", "Plascoin, ERC20Capped, ERC20Burnable, ERC20, Ownable, Context, IERC20Metadata, IERC20, IERC20Errors");
+
+        assert_eq!(c3_linearization(input).unwrap(), target);
+    }
+
+    #[test]
     fn test_merge() {
         let head = "K";
         let mut sets: Sets<&str> = Sets::new();

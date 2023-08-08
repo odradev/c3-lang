@@ -73,6 +73,21 @@ impl C3 {
         }
     }
 
+    /// Retrun list of paths for all base classes in the string format.
+    pub fn all_paths_str(&self) -> Vec<(String, String)> {
+        let mut paths = vec![];
+        for (base, path) in &self.classes {
+            paths.push((
+                base.clone().into(),
+                path.iter()
+                    .map(|class| class.clone().into())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            ));
+        }
+        paths
+    }
+
     /// Prepare sets for the merge function.
     pub fn sets_for(&self, bases: Vec<Class>) -> Result<Sets<Class>, C3Error> {
         let mut sets = Sets::new();
