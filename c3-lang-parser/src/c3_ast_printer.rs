@@ -81,9 +81,8 @@ impl ToTokens for FnDef {
 
                 tokens.extend(quote! {
                     #attrs
-                    #vis fn #fn_ident(#(#args),*) #ret {
+                    #vis fn #fn_ident(#(#args),*) #ret
                         #implementation
-                    }
                 });
             }
             FnDef::Complex(def) => {
