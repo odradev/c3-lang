@@ -13,6 +13,7 @@ pub fn build_package_def(rust_package: &RustPackageDef) -> PackageDef {
     let classes = build_classes(rust_package);
 
     PackageDef {
+        no_std: false,
         attrs,
         other_code,
         class_name,
@@ -203,6 +204,7 @@ pub mod tests {
 
     pub fn test_c3_ast() -> PackageDef {
         PackageDef {
+            no_std: false,
             attrs: vec![],
             other_code: vec![parse_quote! { pub type Num = u32; }],
             class_name: ClassNameDef {
