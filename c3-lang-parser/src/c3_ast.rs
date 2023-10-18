@@ -25,6 +25,7 @@ pub struct ClassDef {
     pub class: Class,
     pub path: Vec<Class>,
     pub variables: Vec<VarDef>,
+    pub other_items: Vec<Item>,
     pub functions: Vec<FnDef>,
 }
 

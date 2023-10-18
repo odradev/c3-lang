@@ -36,6 +36,7 @@ impl ToTokens for ClassDef {
         let functions = &self.functions;
         let struct_attrs = attributes_to_token_stream(&self.struct_attrs);
         let impl_attrs = attributes_to_token_stream(&self.impl_attrs);
+        let other_items = &self.other_items;
 
         let stack_arg = (path_len != 0).then(|| quote!(__stack: PathStack,));
         let path_def = (path_len != 0).then(
@@ -51,6 +52,7 @@ impl ToTokens for ClassDef {
             #impl_attrs
             impl #class_ident {
                 #path_def
+                #(#other_items)*
 
                 #(#functions)*
             }

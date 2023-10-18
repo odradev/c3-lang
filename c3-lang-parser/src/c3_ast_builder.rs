@@ -52,6 +52,7 @@ fn build_class(rust_class: &RustClassDef, c3: &C3, register: &Register) -> Class
     ClassDef {
         struct_attrs: rust_class.struct_attrs(),
         impl_attrs: rust_class.impl_attrs(),
+        other_items: vec![],
         class: class.clone(),
         path: c3.path(&class).unwrap(),
         variables,
@@ -219,6 +220,7 @@ pub mod tests {
                     ident: parse_quote! { x },
                     ty: parse_quote! { u32 },
                 }],
+                other_items: vec![],
                 functions: vec![
                     FnDef::Complex(ComplexFnDef {
                         attrs: Vec::new(),
