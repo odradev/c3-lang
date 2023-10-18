@@ -1,4 +1,4 @@
-use crate::{Register, RustClassDef, RustPackageDef};
+use crate::{c3_ast::ComplexFnDef, Register, RustClassDef, RustPackageDef};
 use c3_lang_linearization::{c3_linearization, Class, Fn, C3};
 use syn::{FnArg, ImplItemMethod, ReturnType};
 
@@ -7,11 +7,14 @@ use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarD
 // --- Package Builder ---
 
 pub fn build_package_def(rust_package: &RustPackageDef) -> PackageDef {
+    let attrs = rust_package.attrs.clone();
     let other_code = rust_package.other_code.clone();
     let class_name = build_class_name_def(rust_package);
     let classes = build_classes(rust_package);
 
     PackageDef {
+        no_std: false,
+        attrs,
         other_code,
         class_name,
         classes,
@@ -49,6 +52,7 @@ fn build_class(rust_class: &RustClassDef, c3: &C3, register: &Register) -> Class
     ClassDef {
         struct_attrs: rust_class.struct_attrs(),
         impl_attrs: rust_class.impl_attrs(),
+        other_items: vec![],
         class: class.clone(),
         path: c3.path(&class).unwrap(),
         variables,
@@ -81,13 +85,13 @@ fn build_function(fun: &Fn, register: &Register) -> FnDef {
     let args = get_args_from_method(first_impl);
     let ret = get_ret_from_method(first_impl);
     let implementations = get_class_function_impls(fun, register);
-    FnDef {
+    FnDef::Complex(ComplexFnDef {
         attrs: first_impl.attrs.clone(),
         name: fun.clone(),
         args,
         ret,
         implementations,
-    }
+    })
 }
 
 // --- Utils ---
@@ -104,7 +108,8 @@ fn get_class_function_impls(fun: &Fn, register: &Register) -> Vec<ClassFnImpl> {
     let mut result = vec![];
     for (class, impl_method) in register.get(fun) {
         result.push(ClassFnImpl {
-            class,
+            visibility: impl_method.vis,
+            class: Some(class),
             fun: fun.clone(),
             implementation: impl_method.block,
         });
@@ -200,6 +205,8 @@ pub mod tests {
 
     pub fn test_c3_ast() -> PackageDef {
         PackageDef {
+            no_std: false,
+            attrs: vec![],
             other_code: vec![parse_quote! { pub type Num = u32; }],
             class_name: ClassNameDef {
                 classes: vec![Class::from("A"), Class::from("B")],
@@ -213,15 +220,17 @@ pub mod tests {
                     ident: parse_quote! { x },
                     ty: parse_quote! { u32 },
                 }],
+                other_items: vec![],
                 functions: vec![
-                    FnDef {
+                    FnDef::Complex(ComplexFnDef {
                         attrs: Vec::new(),
                         name: Fn::from("bar"),
                         args: vec![parse_quote! { &self }, parse_quote! { counter: Num }],
                         ret: parse_quote! { -> String },
                         implementations: vec![
                             ClassFnImpl {
-                                class: Class::from("A"),
+                                visibility: parse_quote!(pub),
+                                class: Some(Class::from("A")),
                                 fun: Fn::from("bar"),
                                 implementation: parse_quote! {{
                                     let label = format!("A::bar({})", counter);
@@ -233,7 +242,8 @@ pub mod tests {
                                 }},
                             },
                             ClassFnImpl {
-                                class: Class::from("B"),
+                                visibility: parse_quote!(pub),
+                                class: Some(Class::from("B")),
                                 fun: Fn::from("bar"),
                                 implementation: parse_quote! {{
                                     let label = format!("B::bar({})", counter);
@@ -245,14 +255,15 @@ pub mod tests {
                                 }},
                             },
                         ],
-                    },
-                    FnDef {
+                    }),
+                    FnDef::Complex(ComplexFnDef {
                         attrs: vec![parse_quote! { #[test] }],
                         name: Fn::from("foo"),
                         args: vec![parse_quote! { &self }, parse_quote! { counter: Num }],
                         ret: parse_quote! { -> String },
                         implementations: vec![ClassFnImpl {
-                            class: Class::from("A"),
+                            visibility: parse_quote!(pub),
+                            class: Some(Class::from("A")),
                             fun: Fn::from("foo"),
                             implementation: parse_quote! {{
                                 let label = format!("A::foo({})", counter);
@@ -263,7 +274,7 @@ pub mod tests {
                                 }
                             }},
                         }],
-                    },
+                    }),
                 ],
             }],
         }

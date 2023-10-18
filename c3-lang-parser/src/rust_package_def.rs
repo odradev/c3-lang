@@ -1,11 +1,12 @@
 use super::RustClassDef;
 use syn::{
     parse::{Parse, ParseStream, Peek},
-    Item, Token,
+    Attribute, Item, Token,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct RustPackageDef {
+    pub attrs: Vec<Attribute>,
     pub other_code: Vec<Item>,
     pub classes: Vec<RustClassDef>,
 }
@@ -38,6 +39,7 @@ impl Parse for RustPackageDef {
             }
         }
         Ok(RustPackageDef {
+            attrs: vec![],
             other_code,
             classes,
         })
@@ -69,6 +71,7 @@ mod tests {
         };
         let result: RustPackageDef = syn::parse2(input).unwrap();
         let target = RustPackageDef {
+            attrs: vec![],
             other_code: vec![
                 parse_quote! { use c3; },
                 parse_quote! { type A = X; },

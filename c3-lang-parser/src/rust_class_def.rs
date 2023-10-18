@@ -21,7 +21,6 @@ impl Parse for RustClassDef {
         } else {
             None
         };
-        // println!("asd");
         Ok(RustClassDef {
             item_struct,
             item_impl,

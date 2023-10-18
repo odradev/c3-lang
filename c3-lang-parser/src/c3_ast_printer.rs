@@ -1,14 +1,15 @@
 use c3_lang_linearization::Class;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
-use syn::{Attribute, FnArg};
+use syn::{parse_quote, Attribute, FnArg};
 
 use super::c3_ast::{ClassDef, ClassFnImpl, ClassNameDef, FnDef, PackageDef, VarDef};
 
 impl ToTokens for PackageDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append_all(&self.attrs);
         tokens.append_all(&self.other_code);
-        tokens.extend(stack_definition());
+        tokens.extend(stack_definition(self.no_std));
         tokens.extend(self.class_name.to_token_stream());
         tokens.append_all(&self.classes);
     }
@@ -35,18 +36,23 @@ impl ToTokens for ClassDef {
         let functions = &self.functions;
         let struct_attrs = attributes_to_token_stream(&self.struct_attrs);
         let impl_attrs = attributes_to_token_stream(&self.impl_attrs);
+        let other_items = &self.other_items;
+
+        let stack_arg = (path_len != 0).then(|| quote!(__stack: PathStack,));
+        let path_def = (path_len != 0).then(
+            || quote!(const PATH: &'static [ClassName; #path_len] = &[#(ClassName::#path),*];),
+        );
         tokens.extend(quote! {
             #struct_attrs
             pub struct #class_ident {
-                __stack: PathStack,
+                #stack_arg
                 #(#variables),*
             }
 
             #impl_attrs
             impl #class_ident {
-                const PATH: &'static [ClassName; #path_len] = &[
-                    #(ClassName::#path),*
-                ];
+                #path_def
+                #(#other_items)*
 
                 #(#functions)*
             }
@@ -66,40 +72,66 @@ impl ToTokens for VarDef {
 
 impl ToTokens for FnDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let fn_ident = &self.name;
-        let fn_super_ident = format_ident!("super_{}", fn_ident.to_string());
-        let args = &self.args;
-        let ret = &self.ret;
-        let implementations = &self.implementations;
-        let args_as_params = args_to_params(args);
-        let attrs = attributes_to_token_stream(&self.attrs);
-        tokens.extend(quote! {
-            #attrs
-            pub fn #fn_ident(#(#args),*) #ret {
-                self.__stack.push_path_on_stack(Self::PATH);
-                let result = self.#fn_super_ident(#(#args_as_params),*);
-                self.__stack.drop_one_from_stack();
-                result
-            }
+        match self {
+            FnDef::Plain(def) => {
+                let fn_ident = &def.name;
+                let args = &def.args;
+                let ret = &def.ret;
+                let implementation = &def.implementation;
+                let attrs = attributes_to_token_stream(&def.attrs);
+                let vis = &implementation.visibility;
 
-            pub fn #fn_super_ident(#(#args),*) #ret {
-                let __class = self.__stack.pop_from_top_path();
-                match __class {
-                    #(#implementations),*
-                    #[allow(unreachable_patterns)]
-                    _ => self.#fn_super_ident(#(#args_as_params),*),
-                }
+                tokens.extend(quote! {
+                    #attrs
+                    #vis fn #fn_ident(#(#args),*) #ret
+                        #implementation
+                });
             }
-        });
+            FnDef::Complex(def) => {
+                let fn_ident = &def.name;
+                let fn_super_ident = format_ident!("super_{}", fn_ident.to_string());
+                let args = &def.args;
+                let ret = &def.ret;
+                let implementations = &def.implementations;
+                let args_as_params = args_to_params(args);
+                let attrs = attributes_to_token_stream(&def.attrs);
+                let vis = implementations
+                    .first()
+                    .map(|f| f.visibility.clone())
+                    .unwrap_or(parse_quote!(pub));
+
+                tokens.extend(quote! {
+                    #attrs
+                    #vis fn #fn_ident(#(#args),*) #ret {
+                        self.__stack.push_path_on_stack(Self::PATH);
+                        let result = self.#fn_super_ident(#(#args_as_params),*);
+                        self.__stack.drop_one_from_stack();
+                        result
+                    }
+
+                    fn #fn_super_ident(#(#args),*) #ret {
+                        let __class = self.__stack.pop_from_top_path();
+                        match __class {
+                            #(#implementations),*
+                            #[allow(unreachable_patterns)]
+                            _ => self.#fn_super_ident(#(#args_as_params),*),
+                        }
+                    }
+                });
+            }
+        };
     }
 }
 
 impl ToTokens for ClassFnImpl {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let class = &self.class;
+        let class = self
+            .class
+            .as_ref()
+            .map(|class| quote!(ClassName::#class => ));
         let implementation = &self.implementation;
         tokens.extend(quote! {
-            ClassName::#class => #implementation
+            #class #implementation
         });
     }
 }
@@ -127,41 +159,36 @@ fn attributes_to_token_stream(attrs: &[Attribute]) -> proc_macro2::TokenStream {
     result
 }
 
-fn stack_definition() -> TokenStream {
+fn stack_definition(no_std: bool) -> TokenStream {
+    let stack_def = match no_std {
+        true => quote!(stack: alloc::rc::Rc<core::cell::RefCell<Vec<Vec<ClassName>>>>),
+        false => quote!(stack: std::rc::Rc<core::cell::RefCell<Vec<Vec<ClassName>>>>),
+    };
+
     quote! {
+        #[derive(Clone, Default)]
         struct PathStack {
-            stack: std::sync::Arc<std::sync::Mutex<Vec<Vec<ClassName>>>>
+            #stack_def
         }
 
         impl PathStack {
-            pub fn new() -> Self {
-                PathStack {
-                    stack: std::sync::Arc::new(std::sync::Mutex::new(Vec::new()))
-                }
-            }
-
             pub fn push_path_on_stack(&self, path: &[ClassName]) {
-                let mut stack = self.stack.lock().unwrap();
+                let mut stack = self.stack.take();
                 stack.push(path.to_vec());
+                self.stack.replace(stack);
             }
-
             pub fn drop_one_from_stack(&self) {
-                let mut stack = self.stack.lock().unwrap();
+                let mut stack = self.stack.take();
                 stack.pop().unwrap();
+                self.stack.replace(stack);
             }
-
             pub fn pop_from_top_path(&self) -> ClassName {
-                let mut stack = self.stack.lock().unwrap();
+                let mut stack = self.stack.take();
                 let mut path = stack.pop().unwrap();
                 let class = path.pop().unwrap();
                 stack.push(path);
+                self.stack.replace(stack);
                 class
-            }
-        }
-
-        impl Default for PathStack {
-            fn default() -> PathStack {
-                PathStack::new()
             }
         }
     }
@@ -178,7 +205,7 @@ mod tests {
     #[test]
     fn test_package_def_printing() {
         let input = test_c3_ast();
-        let stack = stack_definition();
+        let stack = stack_definition(false);
         let target = quote! {
             pub type Num = u32;
 
@@ -206,7 +233,7 @@ mod tests {
                     self.__stack.drop_one_from_stack();
                     result
                 }
-                pub fn super_bar(&self, counter: Num) -> String {
+                fn super_bar(&self, counter: Num) -> String {
                     let __class = self.__stack.pop_from_top_path();
                     match __class {
                         ClassName::A => {
@@ -237,7 +264,7 @@ mod tests {
                     self.__stack.drop_one_from_stack();
                     result
                 }
-                pub fn super_foo(&self, counter: Num) -> String {
+                fn super_foo(&self, counter: Num) -> String {
                     let __class = self.__stack.pop_from_top_path();
                     match __class {
                         ClassName::A => {
