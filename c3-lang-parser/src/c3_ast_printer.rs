@@ -157,7 +157,7 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
     quote! {
         #[derive(Clone)]
         struct PathStack {
-            stack: [ClassName; MAX_PATH_LENGTH],
+            path: [ClassName; MAX_PATH_LENGTH],
             stack_pointer: usize,
             path_pointer: usize,
         }
@@ -178,7 +178,7 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
 
             pub fn pop_from_top_path(&mut self) -> Option<ClassName> {
                 if self.path_pointer < MAX_PATH_LENGTH {
-                    let class = self.stack[MAX_PATH_LENGTH - self.path_pointer - 1];
+                    let class = self.path[MAX_PATH_LENGTH - self.path_pointer - 1];
                     self.path_pointer += 1;
                     Some(class)
                 } else {
@@ -193,7 +193,7 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
         impl PathStack {
             pub const fn new() -> Self {
                 Self {
-                    stack: [#(ClassName::#path),*],
+                    path: [#(ClassName::#path),*],
                     stack_pointer: 0,
                     path_pointer: 0,
                 }
