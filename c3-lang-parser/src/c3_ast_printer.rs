@@ -155,25 +155,14 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
     let path: Vec<Class> = path.clone().into_iter().rev().collect();
     let path_len = path.len();
     quote! {
-        const MAX_STACK_SIZE: usize = 8; // Maximum number of paths in the stack
-        const MAX_PATH_LENGTH: usize = #path_len; // Maximum length of each path
-
         #[derive(Clone)]
         struct PathStack {
-            stack: [[ClassName; MAX_PATH_LENGTH]; MAX_STACK_SIZE],
+            stack: [ClassName; MAX_PATH_LENGTH],
             stack_pointer: usize,
             path_pointer: usize,
         }
 
         impl PathStack {
-            pub const fn new() -> Self {
-                Self {
-                    stack: [[#(ClassName::#path),*]; MAX_STACK_SIZE],
-                    stack_pointer: 0,
-                    path_pointer: 0,
-                }
-            }
-
             pub fn push_path_on_stack(&mut self) {
                 self.path_pointer = 0;
                 if self.stack_pointer < MAX_STACK_SIZE {
@@ -189,7 +178,7 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
 
             pub fn pop_from_top_path(&mut self) -> Option<ClassName> {
                 if self.path_pointer < MAX_PATH_LENGTH {
-                    let class = self.stack[self.stack_pointer - 1][MAX_PATH_LENGTH - self.path_pointer - 1];
+                    let class = self.stack[MAX_PATH_LENGTH - self.path_pointer - 1];
                     self.path_pointer += 1;
                     Some(class)
                 } else {
@@ -199,6 +188,17 @@ fn stack_definition(path: Vec<Class>) -> TokenStream {
         }
 
         static mut STACK: PathStack = PathStack::new();
+        const MAX_STACK_SIZE: usize = 8; // Maximum number of paths in the stack
+        const MAX_PATH_LENGTH: usize = #path_len; // Maximum length of each path
+        impl PathStack {
+            pub const fn new() -> Self {
+                Self {
+                    stack: [#(ClassName::#path),*],
+                    stack_pointer: 0,
+                    path_pointer: 0,
+                }
+            }
+        }
     }
 }
 
