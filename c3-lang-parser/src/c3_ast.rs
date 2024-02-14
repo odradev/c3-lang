@@ -18,7 +18,7 @@ pub struct ClassNameDef {
     pub classes: Vec<Class>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ClassDef {
     pub struct_attrs: Vec<Attribute>,
     pub impl_attrs: Vec<Attribute>,
@@ -29,19 +29,19 @@ pub struct ClassDef {
     pub functions: Vec<FnDef>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct VarDef {
     pub ident: Ident,
     pub ty: Type,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FnDef {
     Plain(PlainFnDef),
     Complex(ComplexFnDef),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PlainFnDef {
     pub attrs: Vec<Attribute>,
     pub name: Fn,
@@ -50,7 +50,7 @@ pub struct PlainFnDef {
     pub implementation: ClassFnImpl,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ComplexFnDef {
     pub attrs: Vec<Attribute>,
     pub name: Fn,
@@ -59,7 +59,7 @@ pub struct ComplexFnDef {
     pub implementations: Vec<ClassFnImpl>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ClassFnImpl {
     pub visibility: Visibility,
     pub class: Option<Class>,

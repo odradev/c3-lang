@@ -9,7 +9,7 @@ impl ToTokens for PackageDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         tokens.append_all(&self.attrs);
         tokens.append_all(&self.other_code);
-        tokens.extend(stack_definition(self.no_std));
+        tokens.extend(stack_definition(self.classes[0].path.clone()));
         tokens.extend(self.class_name.to_token_stream());
         tokens.append_all(&self.classes);
     }
@@ -19,7 +19,7 @@ impl ToTokens for ClassNameDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let classes = &self.classes;
         tokens.extend(quote! {
-            #[derive(Clone)]
+            #[derive(Clone, Copy)]
             enum ClassName {
                 #(#classes),*
             }
@@ -30,28 +30,20 @@ impl ToTokens for ClassNameDef {
 impl ToTokens for ClassDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let class_ident = &self.class;
-        let path: Vec<Class> = self.path.clone().into_iter().rev().collect();
-        let path_len = path.len();
         let variables = &self.variables;
         let functions = &self.functions;
         let struct_attrs = attributes_to_token_stream(&self.struct_attrs);
         let impl_attrs = attributes_to_token_stream(&self.impl_attrs);
         let other_items = &self.other_items;
 
-        let stack_arg = (path_len != 0).then(|| quote!(__stack: PathStack,));
-        let path_def = (path_len != 0).then(
-            || quote!(const PATH: &'static [ClassName; #path_len] = &[#(ClassName::#path),*];),
-        );
         tokens.extend(quote! {
             #struct_attrs
             pub struct #class_ident {
-                #stack_arg
                 #(#variables),*
             }
 
             #impl_attrs
             impl #class_ident {
-                #path_def
                 #(#other_items)*
 
                 #(#functions)*
@@ -103,14 +95,14 @@ impl ToTokens for FnDef {
                 tokens.extend(quote! {
                     #attrs
                     #vis fn #fn_ident(#(#args),*) #ret {
-                        self.__stack.push_path_on_stack(Self::PATH);
+                        unsafe { STACK.push_path_on_stack(); }
                         let result = self.#fn_super_ident(#(#args_as_params),*);
-                        self.__stack.drop_one_from_stack();
+                        unsafe { STACK.drop_one_from_stack(); }
                         result
                     }
 
                     fn #fn_super_ident(#(#args),*) #ret {
-                        let __class = self.__stack.pop_from_top_path();
+                        let __class = unsafe { STACK.pop_from_top_path() };
                         match __class {
                             #(#implementations),*
                             #[allow(unreachable_patterns)]
@@ -128,7 +120,7 @@ impl ToTokens for ClassFnImpl {
         let class = self
             .class
             .as_ref()
-            .map(|class| quote!(ClassName::#class => ));
+            .map(|class| quote!(Some(ClassName::#class) => ));
         let implementation = &self.implementation;
         tokens.extend(quote! {
             #class #implementation
@@ -159,43 +151,60 @@ fn attributes_to_token_stream(attrs: &[Attribute]) -> proc_macro2::TokenStream {
     result
 }
 
-fn stack_definition(no_std: bool) -> TokenStream {
-    let stack_def = match no_std {
-        true => quote!(stack: alloc::rc::Rc<core::cell::RefCell<Vec<Vec<ClassName>>>>),
-        false => quote!(stack: std::rc::Rc<core::cell::RefCell<Vec<Vec<ClassName>>>>),
-    };
-
+fn stack_definition(path: Vec<Class>) -> TokenStream {
+    let path: Vec<Class> = path.clone().into_iter().rev().collect();
+    let path_len = path.len();
     quote! {
-        #[derive(Clone, Default)]
+        const MAX_STACK_SIZE: usize = 8; // Maximum number of paths in the stack
+        const MAX_PATH_LENGTH: usize = #path_len; // Maximum length of each path
+
+        #[derive(Clone)]
         struct PathStack {
-            #stack_def
+            stack: [[ClassName; MAX_PATH_LENGTH]; MAX_STACK_SIZE],
+            stack_pointer: usize,
+            path_pointer: usize,
         }
 
         impl PathStack {
-            pub fn push_path_on_stack(&self, path: &[ClassName]) {
-                let mut stack = self.stack.take();
-                stack.push(path.to_vec());
-                self.stack.replace(stack);
+            pub const fn new() -> Self {
+                Self {
+                    stack: [[#(ClassName::#path),*]; MAX_STACK_SIZE],
+                    stack_pointer: 0,
+                    path_pointer: 0,
+                }
             }
-            pub fn drop_one_from_stack(&self) {
-                let mut stack = self.stack.take();
-                stack.pop().unwrap();
-                self.stack.replace(stack);
+
+            pub fn push_path_on_stack(&mut self) {
+                self.path_pointer = 0;
+                if self.stack_pointer < MAX_STACK_SIZE {
+                    self.stack_pointer += 1;
+                }
             }
-            pub fn pop_from_top_path(&self) -> ClassName {
-                let mut stack = self.stack.take();
-                let mut path = stack.pop().unwrap();
-                let class = path.pop().unwrap();
-                stack.push(path);
-                self.stack.replace(stack);
-                class
+
+            pub fn drop_one_from_stack(&mut self) {
+                if self.stack_pointer > 0 {
+                    self.stack_pointer -= 1;
+                }
+            }
+
+            pub fn pop_from_top_path(&mut self) -> Option<ClassName> {
+                if self.path_pointer < MAX_PATH_LENGTH {
+                    let class = self.stack[self.stack_pointer - 1][MAX_PATH_LENGTH - self.path_pointer - 1];
+                    self.path_pointer += 1;
+                    Some(class)
+                } else {
+                    None
+                }
             }
         }
+
+        static mut STACK: PathStack = PathStack::new();
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use c3_lang_linearization::Class;
     use quote::{quote, ToTokens};
 
     use crate::{c3_ast_builder::tests::test_c3_ast, test_utils::test_code};
@@ -205,7 +214,7 @@ mod tests {
     #[test]
     fn test_package_def_printing() {
         let input = test_c3_ast();
-        let stack = stack_definition(false);
+        let stack = stack_definition(vec![Class::from("B"), Class::from("A")]);
         let target = quote! {
             pub type Num = u32;
 
@@ -219,24 +228,21 @@ mod tests {
 
             #[derive(Debug)]
             pub struct B {
-                __stack: PathStack,
                 x: u32,
             }
 
             #[cfg(target_os = "linux")]
             impl B {
-                const PATH: &'static [ClassName; 2usize] = &[ClassName::A, ClassName::B];
-
                 pub fn bar(&self, counter: Num) -> String {
-                    self.__stack.push_path_on_stack(Self::PATH);
+                    unsafe { STACK.push_path_on_stack(); }
                     let result = self.super_bar(counter);
-                    self.__stack.drop_one_from_stack();
+                    unsafe { STACK.drop_one_from_stack(); }
                     result
                 }
                 fn super_bar(&self, counter: Num) -> String {
-                    let __class = self.__stack.pop_from_top_path();
+                    let __class = unsafe { STACK.pop_from_top_path() };
                     match __class {
-                        ClassName::A => {
+                        Some(ClassName::A) => {
                             let label = format!("A::bar({})", counter);
                             if counter == 0 {
                                 label
@@ -244,7 +250,7 @@ mod tests {
                                 format!("{} {}", label, self.foo(counter - 1))
                             }
                         }
-                        ClassName::B => {
+                        Some(ClassName::B) => {
                             let label = format!("B::bar({})", counter);
                             if counter == 0 {
                                 label
@@ -259,15 +265,15 @@ mod tests {
 
                 #[test]
                 pub fn foo(&self, counter: Num) -> String {
-                    self.__stack.push_path_on_stack(Self::PATH);
+                    unsafe { STACK.push_path_on_stack(); }
                     let result = self.super_foo(counter);
-                    self.__stack.drop_one_from_stack();
+                    unsafe { STACK.drop_one_from_stack(); }
                     result
                 }
                 fn super_foo(&self, counter: Num) -> String {
-                    let __class = self.__stack.pop_from_top_path();
+                    let __class = unsafe { STACK.pop_from_top_path() };
                     match __class {
-                        ClassName::A => {
+                        Some(ClassName::A) => {
                             let label = format!("A::foo({})", counter);
                             if counter == 0 {
                                 label
