@@ -138,12 +138,11 @@ impl ToTokens for ClassFnImpl {
 
 fn args_to_params(args: &[FnArg]) -> Vec<Ident> {
     args.iter()
-        .skip(1)
-        .map(|arg| {
+        .filter_map(|arg| {
             if let FnArg::Typed(arg) = arg {
-                format_ident!("{}", arg.pat.to_token_stream().to_string())
+                Some(format_ident!("{}", arg.pat.to_token_stream().to_string()))
             } else {
-                panic!("Unsupported arg");
+                None
             }
         })
         .collect()
