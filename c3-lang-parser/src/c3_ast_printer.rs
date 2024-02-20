@@ -64,6 +64,8 @@ impl ToTokens for VarDef {
 
 impl ToTokens for FnDef {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let has_receiver_arg = self.has_receiver_arg();
+
         match self {
             FnDef::Plain(def) => {
                 let fn_ident = &def.name;
@@ -92,11 +94,17 @@ impl ToTokens for FnDef {
                     .map(|f| f.visibility.clone())
                     .unwrap_or(parse_quote!(pub));
 
+                let self_token = if has_receiver_arg {
+                    quote! { self. }
+                } else {
+                    quote! { Self:: }
+                };
+
                 tokens.extend(quote! {
                     #attrs
                     #vis fn #fn_ident(#(#args),*) #ret {
                         unsafe { STACK.push_path_on_stack(); }
-                        let result = self.#fn_super_ident(#(#args_as_params),*);
+                        let result = #self_token #fn_super_ident(#(#args_as_params),*);
                         unsafe { STACK.drop_one_from_stack(); }
                         result
                     }
@@ -106,7 +114,7 @@ impl ToTokens for FnDef {
                         match __class {
                             #(#implementations),*
                             #[allow(unreachable_patterns)]
-                            _ => self.#fn_super_ident(#(#args_as_params),*),
+                            _ => #self_token #fn_super_ident(#(#args_as_params),*),
                         }
                     }
                 });

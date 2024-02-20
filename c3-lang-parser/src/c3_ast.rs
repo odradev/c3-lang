@@ -41,6 +41,15 @@ pub enum FnDef {
     Complex(ComplexFnDef),
 }
 
+impl FnDef {
+    pub fn has_receiver_arg(&self) -> bool {
+        match self {
+            FnDef::Plain(f) => f.args.len() > 0 && matches!(f.args[0], FnArg::Receiver(_)),
+            FnDef::Complex(f) => f.args.len() > 0 && matches!(f.args[0], FnArg::Receiver(_)),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct PlainFnDef {
     pub attrs: Vec<Attribute>,
